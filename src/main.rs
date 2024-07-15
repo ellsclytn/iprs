@@ -1,16 +1,17 @@
-mod subnet;
 mod ipv4_subnet;
+mod subnet;
 
-use clap::Parser;
+use crate::subnet::Subnet;
+use clap::{arg, Parser};
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::IpAddr;
 use std::process;
 use std::str::FromStr;
-use crate::subnet::Subnet;
 
 #[derive(Parser)]
 struct Cli {
-    ip: String,
+    #[arg(trailing_var_arg(true))]
+    ip: Option<Vec<String>>,
 }
 
 fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
@@ -23,7 +24,7 @@ fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
             } else if let Ok(ipv6) = Ipv6Net::from_str(ip) {
                 IpNet::V6(ipv6)
             } else {
-                return Err(Box::new(e))
+                return Err(Box::new(e));
             }
         }
     };
@@ -33,23 +34,32 @@ fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
 
 fn main() {
     let args = Cli::parse();
-    let ip_input = &args.ip;
 
-    let ip = match parse_ip(ip_input) {
-        Ok(ip) => { ip },
-        Err(_) => {
-            eprintln!("Invalid IP address");
+    let ip_inputs = match &args.ip {
+        Some(ips) => ips,
+        None => {
+            eprintln!("No IP subnet supplied");
             process::exit(1);
         }
     };
 
-    match ip {
-        IpNet::V4(ipv4) => {
-            let subnet = ipv4_subnet::Ipv4Subnet::new(ipv4);
-            subnet.print();
-        }
-        IpNet::V6(ipv6) => {
-            println!("ip is: {}", ipv6.addr());
+    for ip_input in ip_inputs.iter() {
+        let ip = match parse_ip(ip_input) {
+            Ok(ip) => ip,
+            Err(_) => {
+                eprintln!("-[ERR : Unable to retrieve interface information]");
+                continue;
+            }
+        };
+
+        match ip {
+            IpNet::V4(ipv4) => {
+                let subnet = ipv4_subnet::Ipv4Subnet::new(ipv4);
+                subnet.print();
+            }
+            IpNet::V6(ipv6) => {
+                println!("ip is: {}", ipv6.addr());
+            }
         }
     }
 }
