@@ -22,7 +22,7 @@ impl Ipv4Subnet {
 
 impl Subnet for Ipv4Subnet {
     fn print(&self) -> () {
-        println!("-[self.parsed_subnet : {}] - 0", self.parsed_subnet);
+        println!("-[ipv4 : {}] - 0\n", self.parsed_subnet);
         println!("[CIDR]");
         let host_address_decimal = ipv4_addr_to_u32(self.parsed_subnet.addr());
         println!("{0: <25}- {1}", "Host address", self.parsed_subnet.addr());
