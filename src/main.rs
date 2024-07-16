@@ -1,8 +1,7 @@
-mod ipv4_subnet;
-mod subnet;
+mod interface;
 
-use crate::subnet::Subnet;
 use clap::{arg, Parser};
+use interface::Summary;
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::net::IpAddr;
 use std::process;
@@ -44,7 +43,7 @@ fn main() {
     };
 
     for ip_input in ip_inputs.iter() {
-        let ip = match parse_ip(ip_input) {
+        let interface = match parse_ip(ip_input) {
             Ok(ip) => ip,
             Err(_) => {
                 println!("-[int-ipv4 : {}] - 0\n", ip_input);
@@ -53,13 +52,12 @@ fn main() {
             }
         };
 
-        match ip {
+        match interface {
             IpNet::V4(ipv4) => {
-                let subnet = ipv4_subnet::Ipv4Subnet::new(ipv4);
-                subnet.print();
+                ipv4.print_summary();
             }
             IpNet::V6(ipv6) => {
-                println!("ip is: {}", ipv6.addr());
+                ipv6.print_summary();
             }
         }
 
