@@ -26,7 +26,7 @@ impl ToIpv4 for u32 {
 trait Ranges {
     fn addresses_in_network(&self) -> u32;
     fn network_range(&self) -> String;
-    fn usable_range(&self) -> String;
+    fn usable_range(&self) -> Option<String>;
 }
 
 impl Ranges for Ipv4Net {
@@ -39,11 +39,15 @@ impl Ranges for Ipv4Net {
         format!("{} - {}", self.network(), self.broadcast())
     }
 
-    fn usable_range(&self) -> String {
+    fn usable_range(&self) -> Option<String> {
+        if self.prefix_len() > 30 {
+            return None;
+        }
+
         let first = self.network().to_u32().saturating_add(1);
         let last = self.broadcast().to_u32().saturating_sub(1);
 
-        format!("{} - {}", first.to_ipv4(), last.to_ipv4())
+        Some(format!("{} - {}", first.to_ipv4(), last.to_ipv4()))
     }
 }
 
@@ -73,6 +77,9 @@ impl Summary for Ipv4Net {
         print_attribute("Cisco wildcard mask", (!self.netmask().to_u32()).to_ipv4());
         print_attribute("Addresses in network", self.addresses_in_network());
         print_attribute("Network range", self.network_range());
-        print_attribute("Usable range", self.usable_range());
+
+        if let Some(usable_range) = self.usable_range() {
+            print_attribute("Usable range", usable_range);
+        }
     }
 }
