@@ -51,35 +51,37 @@ impl Ranges for Ipv4Net {
     }
 }
 
-fn print_attribute<T>(name: &str, value: T)
+fn format_attribute<T>(name: &str, value: T) -> String
 where
     T: fmt::Display,
 {
-    println!("{: <24}- {}", name, value);
+    format!("{: <24}- {}", name, value)
 }
 
 impl Summary for Ipv4Net {
-    fn print_summary(&self) {
-        println!("-[ipv4 : {}] - 0\n", self);
-        println!("[CIDR]");
+    fn summarize(&self) -> String {
+        let mut lines: Vec<String> = Vec::new();
+        lines.push(format!("-[ipv4 : {}] - 0\n\n[CIDR]", self));
 
-        print_attribute("Host address", self);
-        print_attribute("Host address (decimal)", self.addr().to_u32());
-        print_attribute("Host address (hex)", format!("{:X}", self.addr().to_u32()));
-        print_attribute("Network address", self.network());
-        print_attribute("Network mask", self.netmask());
-        print_attribute("Network mask (bits)", self.prefix_len());
-        print_attribute(
+        lines.push(format_attribute("Host address", self));
+        lines.push(format_attribute("Host address (decimal)", self.addr().to_u32()));
+        lines.push(format_attribute("Host address (hex)", format!("{:X}", self.addr().to_u32())));
+        lines.push(format_attribute("Network address", self.network()));
+        lines.push(format_attribute("Network mask", self.netmask()));
+        lines.push(format_attribute("Network mask (bits)", self.prefix_len()));
+        lines.push(format_attribute(
             "Network mask (hex)",
             format!("{:X}", self.netmask().to_u32()),
-        );
-        print_attribute("Broadcast address", self.broadcast());
-        print_attribute("Cisco wildcard mask", (!self.netmask().to_u32()).to_ipv4());
-        print_attribute("Addresses in network", self.addresses_in_network());
-        print_attribute("Network range", self.network_range());
+        ));
+        lines.push(format_attribute("Broadcast address", self.broadcast()));
+        lines.push(format_attribute("Cisco wildcard mask", (!self.netmask().to_u32()).to_ipv4()));
+        lines.push(format_attribute("Addresses in network", self.addresses_in_network()));
+        lines.push(format_attribute("Network range", self.network_range()));
 
         if let Some(usable_range) = self.usable_range() {
-            print_attribute("Usable range", usable_range);
+            lines.push(format_attribute("Usable range", usable_range));
         }
+
+        lines.join("\n")
     }
 }

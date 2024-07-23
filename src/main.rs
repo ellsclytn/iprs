@@ -54,10 +54,10 @@ fn main() {
 
         match interface {
             IpNet::V4(ipv4) => {
-                ipv4.print_summary();
+                println!("{}", ipv4.summarize());
             }
             IpNet::V6(ipv6) => {
-                ipv6.print_summary();
+                println!("{}", ipv6.summarize());
             }
         }
 

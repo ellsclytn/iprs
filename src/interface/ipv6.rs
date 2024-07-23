@@ -64,29 +64,32 @@ impl PrintableProperties for Ipv6Net {
     }
 }
 
-fn print_attribute<T>(name: &str, value: T)
+fn format_attribute<T>(name: &str, value: T) -> String
 where
     T: fmt::Display,
 {
-    println!("{: <24}- {}", name, value);
+    format!("{: <24}- {}", name, value)
 }
 
 impl Summary for Ipv6Net {
-    fn print_summary(&self) {
-        println!("-[ipv6 : {self}] - 0\n");
-        println!("[IPV6 INFO]");
+    fn summarize(&self) -> String {
+        let mut lines: Vec<String> = Vec::new();
+        lines.push(format!("-[ipv6 : {self}] - 0\n"));
+        lines.push("[IPV6 INFO]".to_string());
 
-        print_attribute("Expanded Address", self.expanded_address());
-        print_attribute("Compressed Address", self.addr());
-        print_attribute("Subnet Prefix (masked)", self.subnet_prefix_masked());
-        print_attribute("Address ID (masked)", self.address_id_masked());
-        print_attribute("Prefix address", self.trunc().netmask());
-        print_attribute("Prefix length", self.prefix_len());
-        print_attribute("Address type", self.address_type());
+        lines.push(format_attribute("Expanded Address", self.expanded_address()));
+        lines.push(format_attribute("Compressed Address", self.addr()));
+        lines.push(format_attribute("Subnet Prefix (masked)", self.subnet_prefix_masked()));
+        lines.push(format_attribute("Address ID (masked)", self.address_id_masked()));
+        lines.push(format_attribute("Prefix address", self.trunc().netmask()));
+        lines.push(format_attribute("Prefix length", self.prefix_len()));
+        lines.push(format_attribute("Address type", self.address_type()));
 
         let network_range_start = self.trunc().network();
         let network_range_end = self.trunc().broadcast();
-        println!("{: <24}- {network_range_start} -", "Network range");
-        println!("{: <25} {}", " ", network_range_end);
+        lines.push(format!("{: <24}- {network_range_start} -", "Network range"));
+        lines.push(format!("{: <25} {}", " ", network_range_end));
+
+        lines.join("\n")
     }
 }
