@@ -63,7 +63,7 @@ impl Summary for Ipv4Net {
         let mut lines: Vec<String> = Vec::new();
         lines.push(format!("-[ipv4 : {}] - 0\n\n[CIDR]", self));
 
-        lines.push(format_attribute("Host address", self));
+        lines.push(format_attribute("Host address", self.addr()));
         lines.push(format_attribute("Host address (decimal)", self.addr().to_u32()));
         lines.push(format_attribute("Host address (hex)", format!("{:X}", self.addr().to_u32())));
         lines.push(format_attribute("Network address", self.network()));
@@ -74,7 +74,7 @@ impl Summary for Ipv4Net {
             format!("{:X}", self.netmask().to_u32()),
         ));
         lines.push(format_attribute("Broadcast address", self.broadcast()));
-        lines.push(format_attribute("Cisco wildcard mask", (!self.netmask().to_u32()).to_ipv4()));
+        lines.push(format_attribute("Cisco wildcard", (!self.netmask().to_u32()).to_ipv4()));
         lines.push(format_attribute("Addresses in network", self.addresses_in_network()));
         lines.push(format_attribute("Network range", self.network_range()));
 
@@ -83,5 +83,34 @@ impl Summary for Ipv4Net {
         }
 
         lines.join("\n")
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn sumarizes_an_interface() {
+        let expected = "-[ipv4 : 10.1.1.1/32] - 0
+
+[CIDR]
+Host address            - 10.1.1.1
+Host address (decimal)  - 167837953
+Host address (hex)      - A010101
+Network address         - 10.1.1.1
+Network mask            - 255.255.255.255
+Network mask (bits)     - 32
+Network mask (hex)      - FFFFFFFF
+Broadcast address       - 10.1.1.1
+Cisco wildcard          - 0.0.0.0
+Addresses in network    - 1
+Network range           - 10.1.1.1 - 10.1.1.1";
+        let ip = Ipv4Net::from_str("10.1.1.1/32").unwrap();
+
+        assert_eq!(ip.summarize(), expected)
     }
 }
