@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::interface::Summary;
-use ipnet::Ipv6Net;
+use ipnet::{IpBitAnd, Ipv6Net};
 
 trait PrintableProperties {
     fn expanded_address(&self) -> String;
@@ -27,24 +27,15 @@ impl PrintableProperties for Ipv6Net {
     }
 
     fn subnet_prefix_masked(&self) -> String {
-        let addr = self.addr();
+        let id = self.netmask() & self.addr();
 
-        format!(
-            "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}/{}",
-            addr.segments()[0],
-            addr.segments()[1],
-            addr.segments()[2],
-            addr.segments()[3],
-            addr.segments()[4],
-            addr.segments()[5],
-            addr.segments()[6],
-            addr.segments()[7],
-            self.prefix_len()
-        )
+        format!("{id}/{}", self.prefix_len())
     }
 
     fn address_id_masked(&self) -> String {
-        format!("0:0:0:0:0:0:0:0/{}", self.prefix_len())
+        let id = self.hostmask() & self.addr();
+
+        format!("{id}/{}", self.prefix_len())
     }
 
     fn address_type(&self) -> &str {
@@ -100,5 +91,32 @@ impl Summary for Ipv6Net {
         lines.push(format!("{: <25} {}", " ", network_range_end));
 
         lines.join("\n")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn sumarizes_an_interface() {
+        let expected = "-[ipv6 : 3bc7:a1c8:8d4:f9fc:3ed1:bfed:f539:a271/64] - 0
+
+[IPV6 INFO]
+Expanded Address        - 3bc7:a1c8:08d4:f9fc:3ed1:bfed:f539:a271
+Compressed Address      - 3bc7:a1c8:8d4:f9fc:3ed1:bfed:f539:a271
+Subnet Prefix (masked)  - 3bc7:a1c8:8d4:f9fc::/64
+Address ID (masked)     - ::3ed1:bfed:f539:a271/64
+Prefix address          - ffff:ffff:ffff:ffff::
+Prefix length           - 64
+Address type            - Aggregatable Global Unicast Addresses
+Network range           - 3bc7:a1c8:8d4:f9fc:: -
+                          3bc7:a1c8:8d4:f9fc:ffff:ffff:ffff:ffff";
+        let ip = Ipv6Net::from_str("3bc7:a1c8:8d4:f9fc:3ed1:bfed:f539:a271/64").unwrap();
+
+        assert_eq!(ip.summarize(), expected)
     }
 }
