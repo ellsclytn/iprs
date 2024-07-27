@@ -64,8 +64,14 @@ impl Summary for Ipv4Net {
         lines.push(format!("-[ipv4 : {}] - 0\n\n[CIDR]", self));
 
         lines.push(format_attribute("Host address", self.addr()));
-        lines.push(format_attribute("Host address (decimal)", self.addr().to_u32()));
-        lines.push(format_attribute("Host address (hex)", format!("{:X}", self.addr().to_u32())));
+        lines.push(format_attribute(
+            "Host address (decimal)",
+            self.addr().to_u32(),
+        ));
+        lines.push(format_attribute(
+            "Host address (hex)",
+            format!("{:X}", self.addr().to_u32()),
+        ));
         lines.push(format_attribute("Network address", self.network()));
         lines.push(format_attribute("Network mask", self.netmask()));
         lines.push(format_attribute("Network mask (bits)", self.prefix_len()));
@@ -74,8 +80,14 @@ impl Summary for Ipv4Net {
             format!("{:X}", self.netmask().to_u32()),
         ));
         lines.push(format_attribute("Broadcast address", self.broadcast()));
-        lines.push(format_attribute("Cisco wildcard", (!self.netmask().to_u32()).to_ipv4()));
-        lines.push(format_attribute("Addresses in network", self.addresses_in_network()));
+        lines.push(format_attribute(
+            "Cisco wildcard",
+            (!self.netmask().to_u32()).to_ipv4(),
+        ));
+        lines.push(format_attribute(
+            "Addresses in network",
+            self.addresses_in_network(),
+        ));
         lines.push(format_attribute("Network range", self.network_range()));
 
         if let Some(usable_range) = self.usable_range() {
@@ -85,7 +97,6 @@ impl Summary for Ipv4Net {
         lines.join("\n")
     }
 }
-
 
 #[cfg(test)]
 mod tests {

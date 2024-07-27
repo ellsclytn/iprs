@@ -77,10 +77,19 @@ impl Summary for Ipv6Net {
         lines.push(format!("-[ipv6 : {self}] - 0\n"));
         lines.push("[IPV6 INFO]".to_string());
 
-        lines.push(format_attribute("Expanded Address", self.expanded_address()));
+        lines.push(format_attribute(
+            "Expanded Address",
+            self.expanded_address(),
+        ));
         lines.push(format_attribute("Compressed Address", self.addr()));
-        lines.push(format_attribute("Subnet Prefix (masked)", self.subnet_prefix_masked()));
-        lines.push(format_attribute("Address ID (masked)", self.address_id_masked()));
+        lines.push(format_attribute(
+            "Subnet Prefix (masked)",
+            self.subnet_prefix_masked(),
+        ));
+        lines.push(format_attribute(
+            "Address ID (masked)",
+            self.address_id_masked(),
+        ));
         lines.push(format_attribute("Prefix address", self.trunc().netmask()));
         lines.push(format_attribute("Prefix length", self.prefix_len()));
         lines.push(format_attribute("Address type", self.address_type()));
