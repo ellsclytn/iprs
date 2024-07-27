@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::interface::Summary;
-use ipnet::{IpBitAnd, Ipv6Net};
+use ipnet::Ipv6Net;
 
 trait PrintableProperties {
     fn expanded_address(&self) -> String;
