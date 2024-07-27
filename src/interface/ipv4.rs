@@ -125,4 +125,27 @@ Network range           - 10.1.1.1 - 10.1.1.1";
 
         assert_eq!(ip.summarize(), expected)
     }
+
+    #[test]
+    fn includes_usable_range_below_31() {
+        let expected = "-[ipv4 : 10.1.1.1/30] - 0
+
+[CIDR]
+Host address            - 10.1.1.1
+Host address (decimal)  - 167837953
+Host address (hex)      - A010101
+Network address         - 10.1.1.0
+Network mask            - 255.255.255.252
+Network mask (bits)     - 30
+Network mask (hex)      - FFFFFFFC
+Broadcast address       - 10.1.1.3
+Cisco wildcard          - 0.0.0.3
+Addresses in network    - 4
+Network range           - 10.1.1.0 - 10.1.1.3
+Usable range            - 10.1.1.1 - 10.1.1.2";
+
+        let ip = Ipv4Net::from_str("10.1.1.1/30").unwrap();
+
+        assert_eq!(ip.summarize(), expected)
+    }
 }
