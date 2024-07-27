@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.9", features = ["derive"] }
 ipnet = { version = "2.9.0" }
+
+[dev-dependencies]
+pretty_assertions = "1"

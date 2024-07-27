@@ -103,6 +103,7 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn sumarizes_an_interface() {
