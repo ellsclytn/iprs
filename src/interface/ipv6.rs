@@ -65,7 +65,7 @@ fn format_attribute<T>(name: &str, value: T) -> String
 where
     T: fmt::Display,
 {
-    format!("{: <24}- {}", name, value)
+    format!("{name: <24}- {value}")
 }
 
 impl Summary for Ipv6Net {

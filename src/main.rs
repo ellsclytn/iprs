@@ -46,7 +46,7 @@ fn main() {
         let interface = match parse_ip(ip_input) {
             Ok(ip) => ip,
             Err(_) => {
-                println!("-[int-ipv4 : {}] - 0\n", ip_input);
+                println!("-[int-ipv4 : {ip_input}] - 0\n");
                 println!("-[ERR : Unable to retrieve interface information]\n\n-");
                 continue;
             }

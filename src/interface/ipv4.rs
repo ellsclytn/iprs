@@ -55,13 +55,13 @@ fn format_attribute<T>(name: &str, value: T) -> String
 where
     T: fmt::Display,
 {
-    format!("{: <24}- {}", name, value)
+    format!("{name: <24}- {value}")
 }
 
 impl Summary for Ipv4Net {
     fn summarize(&self) -> String {
         let mut lines: Vec<String> = Vec::new();
-        lines.push(format!("-[ipv4 : {}] - 0\n\n[CIDR]", self));
+        lines.push(format!("-[ipv4 : {self}] - 0\n\n[CIDR]"));
 
         lines.push(format_attribute("Host address", self.addr()));
         lines.push(format_attribute(
