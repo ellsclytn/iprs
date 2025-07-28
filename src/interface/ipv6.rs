@@ -49,9 +49,15 @@ impl PrintableProperties for Ipv6Net {
         // fc00::/7 RFC4193
         } else if (first_segment & 0xfe00) == 0xfc00 {
             return "Unique Local Unicast";
+        // fe80://10 RFC4291 & RFC3513
+        } else if (first_segment & 0xffc0) == 0xfe80 {
+            return "Link-Scoped Unicast";
+        // ff00::/8 RFC4291 & RFC3513
+        } else if (first_segment & 0xff00) == 0xff00 {
+            return "Multicast";
         }
 
-        todo!()
+        "Reserved by IETF"
     }
 }
 
