@@ -27,7 +27,7 @@ jobs:
         with:
           release: true
           git-user: "Cog Bot"
-          git-user-email: "ripcalc@ellis.codes"
+          git-user-email: "iprs@ellis.codes"
           check-latest-tag-only: true
 
       - name: Print version
@@ -72,7 +72,7 @@ jobs:
           fetch-depth: 0
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          bin: ripcalc
+          bin: iprs
           target: ${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: refs/tags/${{ needs.tag-version.outputs.version }}
