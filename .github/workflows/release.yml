@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
   workflow_dispatch:
 
 env:
@@ -13,17 +13,45 @@ permissions:
   contents: write
 
 jobs:
+  tag-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Semver release
+        uses: cocogitto/cocogitto-action@v3
+        id: release
+        with:
+          release: true
+          git-user: "Cog Bot"
+          git-user-email: "ripcalc@ellis.codes"
+          check-latest-tag-only: true
+
+      - name: Print version
+        run: "echo '${{ steps.release.outputs.version }}'"
+
   create-release:
+    needs: tag-version
+    if: needs.tag-version.outputs.version != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: taiki-e/create-gh-release-action@v1
         with:
-          # (required) GitHub token for creating GitHub Releases.
+          fetch-depth: 0
+          ref: ${{ needs.tag-version.outputs.version }}
+      - name: Create release
+        uses: taiki-e/create-gh-release-action@v1
+        with:
+          changelog: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: refs/tags/${{ needs.tag-version.outputs.version }}
 
   upload-assets:
-    needs: create-release
+    needs: [tag-version, create-release]
+    if: needs.tag-version.outputs.version != ''
     strategy:
       matrix:
         include:
@@ -35,18 +63,16 @@ jobs:
             os: ubuntu-latest
           - target: x86_64-apple-darwin
             os: macos-latest
-          # Universal macOS binary is supported as universal-apple-darwin.
           - target: universal-apple-darwin
             os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
-          # Note that glob pattern is not supported yet.
           bin: ripcalc
-          # (optional) Target triple, default is host triple.
           target: ${{ matrix.target }}
-          # (required) GitHub token for uploading assets to GitHub Releases.
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: refs/tags/${{ needs.tag-version.outputs.version }}
