@@ -98,7 +98,26 @@ impl Interface for Ipv4Net {
     }
 
     fn split(&self, mask: u8) -> String {
-        todo!()
+        let mut lines: Vec<String> = Vec::new();
+        lines.push(format!("-[ipv4 : {self}] - 0\n"));
+        lines.push("[Split network]".to_string());
+
+        match self.subnets(mask) {
+            Ok(subnets) => {
+                for subnet in subnets {
+                    lines.push(format!(
+                        "Network - {:<15} - {}",
+                        subnet.addr(),
+                        subnet.broadcast()
+                    ));
+                }
+            }
+            Err(_) => {
+                lines.push("-[ERR : Oversized splitmask]".to_string());
+            }
+        }
+
+        lines.join("\n")
     }
 }
 
@@ -151,5 +170,34 @@ Usable range            - 10.1.1.1 - 10.1.1.2";
         let ip = Ipv4Net::from_str("10.1.1.1/30").unwrap();
 
         assert_eq!(ip.summarize(), expected)
+    }
+
+    #[test]
+    fn splits_a_range() {
+        let expected = "-[ipv4 : 1.2.3.4/25] - 0
+
+[Split network]
+Network - 1.2.3.0         - 1.2.3.15
+Network - 1.2.3.16        - 1.2.3.31
+Network - 1.2.3.32        - 1.2.3.47
+Network - 1.2.3.48        - 1.2.3.63
+Network - 1.2.3.64        - 1.2.3.79
+Network - 1.2.3.80        - 1.2.3.95
+Network - 1.2.3.96        - 1.2.3.111
+Network - 1.2.3.112       - 1.2.3.127";
+        let ip = Ipv4Net::from_str("1.2.3.4/25").unwrap();
+
+        assert_eq!(ip.split(28), expected)
+    }
+
+    #[test]
+    fn reports_oversized_range_split() {
+        let expected = "-[ipv4 : 1.2.3.4/29] - 0
+
+[Split network]
+-[ERR : Oversized splitmask]";
+        let ip = Ipv4Net::from_str("1.2.3.4/29").unwrap();
+
+        assert_eq!(ip.split(24), expected)
     }
 }
