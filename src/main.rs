@@ -1,7 +1,7 @@
 mod interface;
 
 use clap::{arg, Parser};
-use interface::IpNetSummary;
+use interface::Interface;
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::net::IpAddr;
 use std::process;
@@ -11,6 +11,8 @@ use std::str::FromStr;
 struct Cli {
     #[arg(trailing_var_arg(true))]
     ip: Option<Vec<String>>,
+    #[arg(short, long)]
+    split: Option<u8>,
 }
 
 fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
@@ -52,7 +54,11 @@ fn main() {
             }
         };
 
-        println!("{}", interface.summarize());
+        if let Some(split) = args.split {
+            println!("{}", interface.split(split));
+        } else {
+            println!("{}", interface.summarize());
+        }
 
         println!("\n-");
     }

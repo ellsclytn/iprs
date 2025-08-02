@@ -1,6 +1,6 @@
 use std::{fmt, net::Ipv4Addr};
 
-use crate::interface::Summary;
+use crate::interface::Interface;
 use ipnet::Ipv4Net;
 
 trait ToPrimitive {
@@ -58,7 +58,7 @@ where
     format!("{name: <24}- {value}")
 }
 
-impl Summary for Ipv4Net {
+impl Interface for Ipv4Net {
     fn summarize(&self) -> String {
         let mut lines: Vec<String> = Vec::new();
         lines.push(format!("-[ipv4 : {self}] - 0\n\n[CIDR]"));
@@ -95,6 +95,10 @@ impl Summary for Ipv4Net {
         }
 
         lines.join("\n")
+    }
+
+    fn split(&self, mask: u8) -> String {
+        todo!()
     }
 }
 

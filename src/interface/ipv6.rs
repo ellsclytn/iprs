@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::interface::Summary;
+use crate::interface::Interface;
 use ipnet::Ipv6Net;
 
 trait PrintableProperties {
@@ -68,7 +68,7 @@ where
     format!("{name: <24}- {value}")
 }
 
-impl Summary for Ipv6Net {
+impl Interface for Ipv6Net {
     fn summarize(&self) -> String {
         let mut lines: Vec<String> = Vec::new();
         lines.push(format!("-[ipv6 : {self}] - 0\n"));
@@ -97,6 +97,10 @@ impl Summary for Ipv6Net {
         lines.push(format!("{: <25} {}", " ", network_range_end));
 
         lines.join("\n")
+    }
+
+    fn split(&self, mask: u8) -> String {
+        todo!()
     }
 }
 
