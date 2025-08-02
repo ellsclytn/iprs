@@ -1,7 +1,7 @@
 mod interface;
 
 use clap::{arg, Parser};
-use interface::Summary;
+use interface::IpNetSummary;
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::net::IpAddr;
 use std::process;
@@ -52,14 +52,7 @@ fn main() {
             }
         };
 
-        match interface {
-            IpNet::V4(ipv4) => {
-                println!("{}", ipv4.summarize());
-            }
-            IpNet::V6(ipv6) => {
-                println!("{}", ipv6.summarize());
-            }
-        }
+        println!("{}", interface.summarize());
 
         println!("\n-");
     }
