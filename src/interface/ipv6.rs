@@ -100,7 +100,26 @@ impl Interface for Ipv6Net {
     }
 
     fn split(&self, mask: u8) -> String {
-        todo!()
+        let mut lines: Vec<String> = Vec::new();
+        lines.push(format!("-[ipv6 : {self}] - 0\n"));
+        lines.push("[Split network]".to_string());
+
+        match self.subnets(mask) {
+            Ok(subnets) => {
+                for subnet in subnets {
+                    lines.push(format!(
+                        "Network - {:<39} - {}",
+                        subnet.addr(),
+                        subnet.broadcast()
+                    ));
+                }
+            }
+            Err(_) => {
+                lines.push("-[ERR : Oversized splitmask]".to_string());
+            }
+        }
+
+        lines.join("\n")
     }
 }
 
@@ -128,5 +147,34 @@ Network range           - 3bc7:a1c8:8d4:f9fc:: -
         let ip = Ipv6Net::from_str("3bc7:a1c8:8d4:f9fc:3ed1:bfed:f539:a271/64").unwrap();
 
         assert_eq!(ip.summarize(), expected)
+    }
+
+    #[test]
+    fn splits_a_range() {
+        let expected = "-[ipv6 : ffff::/81] - 0
+
+[Split network]
+Network - ffff::                                  - ffff::fff:ffff:ffff
+Network - ffff::1000:0:0                          - ffff::1fff:ffff:ffff
+Network - ffff::2000:0:0                          - ffff::2fff:ffff:ffff
+Network - ffff::3000:0:0                          - ffff::3fff:ffff:ffff
+Network - ffff::4000:0:0                          - ffff::4fff:ffff:ffff
+Network - ffff::5000:0:0                          - ffff::5fff:ffff:ffff
+Network - ffff::6000:0:0                          - ffff::6fff:ffff:ffff
+Network - ffff::7000:0:0                          - ffff::7fff:ffff:ffff";
+        let ip = Ipv6Net::from_str("ffff::/81").unwrap();
+
+        assert_eq!(ip.split(84), expected)
+    }
+
+    #[test]
+    fn reports_oversized_range_split() {
+        let expected = "-[ipv6 : 1234:5678::/64] - 0
+
+[Split network]
+-[ERR : Oversized splitmask]";
+        let ip = Ipv6Net::from_str("1234:5678::/64").unwrap();
+
+        assert_eq!(ip.split(25), expected)
     }
 }
