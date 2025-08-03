@@ -1,5 +1,8 @@
+use std::io;
+use std::io::Write;
 use std::{fmt, net::Ipv4Addr};
 
+use crate::context::Ctx;
 use crate::interface::Interface;
 use ipnet::Ipv4Net;
 
@@ -59,65 +62,63 @@ where
 }
 
 impl Interface for Ipv4Net {
-    fn summarize(&self) -> String {
-        let mut lines: Vec<String> = Vec::new();
-        lines.push(format!("-[ipv4 : {self}] - 0\n\n[CIDR]"));
+    fn summarize<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>) -> Result<(), io::Error> {
+        ctx.writeln(format!("-[ipv4 : {self}] - 0\n\n[CIDR]"))?;
 
-        lines.push(format_attribute("Host address", self.addr()));
-        lines.push(format_attribute(
+        ctx.writeln(format_attribute("Host address", self.addr()))?;
+        ctx.writeln(format_attribute(
             "Host address (decimal)",
             self.addr().to_u32(),
-        ));
-        lines.push(format_attribute(
+        ))?;
+        ctx.writeln(format_attribute(
             "Host address (hex)",
             format!("{:X}", self.addr().to_u32()),
-        ));
-        lines.push(format_attribute("Network address", self.network()));
-        lines.push(format_attribute("Network mask", self.netmask()));
-        lines.push(format_attribute("Network mask (bits)", self.prefix_len()));
-        lines.push(format_attribute(
+        ))?;
+        ctx.writeln(format_attribute("Network address", self.network()))?;
+        ctx.writeln(format_attribute("Network mask", self.netmask()))?;
+        ctx.writeln(format_attribute("Network mask (bits)", self.prefix_len()))?;
+        ctx.writeln(format_attribute(
             "Network mask (hex)",
             format!("{:X}", self.netmask().to_u32()),
-        ));
-        lines.push(format_attribute("Broadcast address", self.broadcast()));
-        lines.push(format_attribute(
+        ))?;
+        ctx.writeln(format_attribute("Broadcast address", self.broadcast()))?;
+        ctx.writeln(format_attribute(
             "Cisco wildcard",
             (!self.netmask().to_u32()).to_ipv4(),
-        ));
-        lines.push(format_attribute(
+        ))?;
+        ctx.writeln(format_attribute(
             "Addresses in network",
             self.addresses_in_network(),
-        ));
-        lines.push(format_attribute("Network range", self.network_range()));
+        ))?;
+        ctx.writeln(format_attribute("Network range", self.network_range()))?;
 
         if let Some(usable_range) = self.usable_range() {
-            lines.push(format_attribute("Usable range", usable_range));
+            ctx.writeln(format_attribute("Usable range", usable_range))?;
         }
 
-        lines.join("\n")
+        Ok(())
     }
 
-    fn split(&self, mask: u8) -> String {
-        let mut lines: Vec<String> = Vec::new();
-        lines.push(format!("-[ipv4 : {self}] - 0\n"));
-        lines.push("[Split network]".to_string());
+    fn split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, mask: u8) -> Result<(), io::Error> {
+        ctx.writeln(format!("-[ipv4 : {self}] - 0\n"))?;
+        ctx.writeln("[Split network]".to_string())?;
 
         match self.subnets(mask) {
             Ok(subnets) => {
                 for subnet in subnets {
-                    lines.push(format!(
+                    ctx.writeln(format!(
                         "Network - {:<15} - {}",
                         subnet.addr(),
                         subnet.broadcast()
-                    ));
+                    ))?;
                 }
             }
             Err(_) => {
-                lines.push("-[ERR : Oversized splitmask]".to_string());
+                ctx.writeln("-[ERR : Oversized splitmask]".to_string())?;
             }
         }
 
-        lines.join("\n")
+        Ok(())
     }
 }
 
@@ -126,6 +127,7 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
+    use crate::context::test_util::{create_test_ctx, get_output_as_string};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -143,10 +145,15 @@ Network mask (hex)      - FFFFFFFF
 Broadcast address       - 10.1.1.1
 Cisco wildcard          - 0.0.0.0
 Addresses in network    - 1
-Network range           - 10.1.1.1 - 10.1.1.1";
+Network range           - 10.1.1.1 - 10.1.1.1
+";
         let ip = Ipv4Net::from_str("10.1.1.1/32").unwrap();
+        let mut ctx = create_test_ctx();
 
-        assert_eq!(ip.summarize(), expected)
+        ip.summarize(&mut ctx).unwrap();
+        let output = get_output_as_string(&ctx);
+
+        assert_eq!(output, expected)
     }
 
     #[test]
@@ -165,11 +172,16 @@ Broadcast address       - 10.1.1.3
 Cisco wildcard          - 0.0.0.3
 Addresses in network    - 4
 Network range           - 10.1.1.0 - 10.1.1.3
-Usable range            - 10.1.1.1 - 10.1.1.2";
+Usable range            - 10.1.1.1 - 10.1.1.2
+";
 
         let ip = Ipv4Net::from_str("10.1.1.1/30").unwrap();
+        let mut ctx = create_test_ctx();
 
-        assert_eq!(ip.summarize(), expected)
+        ip.summarize(&mut ctx).unwrap();
+        let output = get_output_as_string(&ctx);
+
+        assert_eq!(output, expected)
     }
 
     #[test]
@@ -184,10 +196,15 @@ Network - 1.2.3.48        - 1.2.3.63
 Network - 1.2.3.64        - 1.2.3.79
 Network - 1.2.3.80        - 1.2.3.95
 Network - 1.2.3.96        - 1.2.3.111
-Network - 1.2.3.112       - 1.2.3.127";
+Network - 1.2.3.112       - 1.2.3.127
+";
         let ip = Ipv4Net::from_str("1.2.3.4/25").unwrap();
+        let mut ctx = create_test_ctx();
 
-        assert_eq!(ip.split(28), expected)
+        ip.split(&mut ctx, 28).unwrap();
+        let output = get_output_as_string(&ctx);
+
+        assert_eq!(output, expected);
     }
 
     #[test]
@@ -195,9 +212,15 @@ Network - 1.2.3.112       - 1.2.3.127";
         let expected = "-[ipv4 : 1.2.3.4/29] - 0
 
 [Split network]
--[ERR : Oversized splitmask]";
+-[ERR : Oversized splitmask]
+";
         let ip = Ipv4Net::from_str("1.2.3.4/29").unwrap();
 
-        assert_eq!(ip.split(24), expected)
+        let mut ctx = create_test_ctx();
+
+        ip.split(&mut ctx, 24).unwrap();
+        let output = get_output_as_string(&ctx);
+
+        assert_eq!(output, expected);
     }
 }

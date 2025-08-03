@@ -1,6 +1,8 @@
+mod context;
 mod interface;
 
 use clap::{arg, Parser};
+use context::Ctx;
 use interface::Interface;
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::net::IpAddr;
@@ -33,13 +35,14 @@ fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
     Ok(parsed_ip)
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
+    let mut ctx = Ctx::new(std::io::stdout().lock(), std::io::stderr().lock());
 
     let ip_inputs = match &args.ip {
         Some(ips) => ips,
         None => {
-            eprintln!("No IP subnet supplied");
+            ctx.ewriteln("No IP subnet supplied")?;
             process::exit(1);
         }
     };
@@ -48,18 +51,20 @@ fn main() {
         let interface = match parse_ip(ip_input) {
             Ok(ip) => ip,
             Err(_) => {
-                println!("-[int-ipv4 : {ip_input}] - 0\n");
-                println!("-[ERR : Unable to retrieve interface information]\n\n-");
+                ctx.writeln("-[int-ipv4 : {ip_input}] - 0\n")?;
+                ctx.writeln("-[ERR : Unable to retrieve interface information]\n\n-")?;
                 continue;
             }
         };
 
         if let Some(split) = args.split {
-            println!("{}", interface.split(split));
+            interface.split(&mut ctx, split)?;
         } else {
-            println!("{}", interface.summarize());
+            interface.summarize(&mut ctx)?;
         }
 
-        println!("\n-");
+        ctx.writeln("\n-")?;
     }
+
+    Ok(())
 }
