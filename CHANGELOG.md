@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.3.0 - 2025-08-03
+#### Continuous Integration
+- ensure Cargo changes get included with releases - (652e0f7) - Ellis Clayton
+#### Features
+- add ipv6 range splitting - (5fb5696) - Ellis Clayton
+- add ipv4 range splitting - (1d1663f) - Ellis Clayton
+- add argument for subnet range splitting - (aa8c219) - Ellis Clayton
+#### Performance Improvements
+- write output as soon as it's known - (8bdc905) - Ellis Clayton
+#### Refactoring
+- move summarize to interface.rs - (650a8f7) - Ellis Clayton
+
+- - -
+
 ## 0.2.0 - 2025-08-01
 #### Continuous Integration
 - add automated releases - (2a8f889) - Ellis Clayton
