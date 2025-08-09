@@ -14,6 +14,8 @@ struct Cli {
     #[arg(trailing_var_arg(true))]
     ip: Option<Vec<String>>,
     #[arg(short, long)]
+    random: bool,
+    #[arg(short, long)]
     split: Option<u8>,
 }
 
@@ -57,8 +59,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
+        if args.random && args.split.is_none() {
+            ctx.ewriteln("-[ERR : --random requires --split]\n\n-")?;
+            process::exit(1);
+        }
+
         if let Some(split) = args.split {
-            interface.split(&mut ctx, split)?;
+            if args.random {
+                interface.random_split(&mut ctx, split)?;
+            } else {
+                interface.split(&mut ctx, split)?;
+            }
         } else {
             interface.summarize(&mut ctx)?;
         }

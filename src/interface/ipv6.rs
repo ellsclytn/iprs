@@ -1,10 +1,43 @@
 use std::{
     fmt,
     io::{self, Write},
+    net::Ipv6Addr,
 };
 
 use crate::{context::Ctx, interface::Interface};
 use ipnet::Ipv6Net;
+
+pub trait RandomRangeGenerator {
+    fn random_range(&mut self, range: std::ops::Range<u128>) -> u128;
+}
+
+pub struct DefaultRng;
+
+impl RandomRangeGenerator for DefaultRng {
+    fn random_range(&mut self, range: std::ops::Range<u128>) -> u128 {
+        rand::random_range(range)
+    }
+}
+
+trait ToPrimitive {
+    fn to_u128(&self) -> u128;
+}
+
+impl ToPrimitive for Ipv6Addr {
+    fn to_u128(&self) -> u128 {
+        (*self).into()
+    }
+}
+
+trait ToIpv6 {
+    fn to_ipv6(&self) -> Ipv6Addr;
+}
+
+impl ToIpv6 for u128 {
+    fn to_ipv6(&self) -> Ipv6Addr {
+        (*self).into()
+    }
+}
 
 trait PrintableProperties {
     fn expanded_address(&self) -> String;
@@ -122,6 +155,55 @@ impl Interface for Ipv6Net {
 
         Ok(())
     }
+
+    fn random_split<W: Write, E: Write>(
+        &self,
+        ctx: &mut Ctx<W, E>,
+        split: u8,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut rng = DefaultRng;
+        random_split_with_rng(self, ctx, split, &mut rng)
+    }
+}
+
+fn random_split_with_rng<W: Write, E: Write, R: RandomRangeGenerator>(
+    ip: &Ipv6Net,
+    ctx: &mut Ctx<W, E>,
+    split: u8,
+    rng: &mut R,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let address = random_split_generate_address(ip, split, rng)?;
+    address.summarize(ctx)?;
+
+    Ok(())
+}
+
+fn random_split_generate_address<R: RandomRangeGenerator>(
+    ip: &Ipv6Net,
+    split: u8,
+    rng: &mut R,
+) -> Result<Ipv6Net, Box<dyn std::error::Error>> {
+    if split <= ip.prefix_len() {
+        return Err("Split mask must be greater than the prefix length".into());
+    } else if split > 128 {
+        return Err("Split mask cannot be greater than 128".into());
+    }
+
+    let random_number = rng.random_range(0..u128::MAX);
+    let split_mask = !((1 << (128 - split)) - 1);
+
+    if ip.prefix_len() == 0 {
+        let random_address = random_number & split_mask;
+        return Ok(Ipv6Net::new(random_address.to_ipv6(), split)?);
+    }
+
+    let supernet_mask = (1 << (128 - ip.prefix_len())) - 1;
+    let new_address: u128 =
+        (ip.addr().to_u128() & !supernet_mask) | (random_number & supernet_mask);
+    let new_prefix = new_address & split_mask;
+    let address = Ipv6Net::new(new_prefix.to_ipv6(), split)?;
+
+    Ok(address)
 }
 
 #[cfg(test)]
@@ -131,6 +213,28 @@ mod tests {
     use super::*;
     use crate::context::test_util::{create_test_ctx, get_output_as_string};
     use pretty_assertions::assert_eq;
+
+    fn ip_to_u128(ip: &str) -> u128 {
+        let cidr = format!("{ip}/128");
+
+        Ipv6Net::from_str(&cidr).unwrap().addr().to_u128()
+    }
+
+    struct MockRng {
+        value: u128,
+    }
+
+    impl MockRng {
+        fn new(value: u128) -> Self {
+            Self { value }
+        }
+    }
+
+    impl RandomRangeGenerator for MockRng {
+        fn random_range(&mut self, _range: std::ops::Range<u128>) -> u128 {
+            self.value
+        }
+    }
 
     #[test]
     fn sumarizes_an_interface() {
@@ -193,5 +297,32 @@ Network - ffff::7000:0:0                          - ffff::7fff:ffff:ffff
         let output = get_output_as_string(&ctx);
 
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn random_split_produces_different_results_with_different_random_values() {
+        let ip = Ipv6Net::from_str("7a18:549a:ecb0:5573:edfc:fa96:d303:ce5b/48").unwrap();
+
+        let mut mock_rng1 = MockRng::new(ip_to_u128("7a18:549a:ecb0:5573:edfc:fa96:d303:ce5b"));
+        let output1 = random_split_generate_address(&ip, 64, &mut mock_rng1).unwrap();
+
+        assert_eq!(output1.to_string(), "7a18:549a:ecb0:5573::/64");
+
+        let mut mock_rng2 = MockRng::new(ip_to_u128("45c0:b8e4:e243:4159:439c:d13d:3e2a:8c80"));
+        let output2 = random_split_generate_address(&ip, 72, &mut mock_rng2).unwrap();
+
+        assert_eq!(output2.to_string(), "7a18:549a:ecb0:4159:4300::/72");
+
+        assert_ne!(output1, output2);
+    }
+
+    #[test]
+    fn random_split_works_with_netmask_0_input() {
+        let ip = Ipv6Net::from_str("::/0").unwrap();
+
+        let mut mock_rng = MockRng::new(ip_to_u128("4cc7:8e7:b232:e2dd:4920:68b5:e628:406f"));
+        let output = random_split_generate_address(&ip, 64, &mut mock_rng).unwrap();
+
+        assert_eq!(output.to_string(), "4cc7:8e7:b232:e2dd::/64");
     }
 }
