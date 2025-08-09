@@ -1,8 +1,10 @@
 mod context;
+mod error;
 mod interface;
 
 use clap::{arg, Parser};
 use context::Ctx;
+use error::Result;
 use interface::Interface;
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::net::IpAddr;
@@ -19,7 +21,7 @@ struct Cli {
     split: Option<u8>,
 }
 
-fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
+fn parse_ip(ip: &str) -> Result<IpNet> {
     let parsed_ip = match IpAddr::from_str(ip) {
         Ok(IpAddr::V4(ipv4)) => IpNet::V4(Ipv4Net::new(ipv4, 32)?),
         Ok(IpAddr::V6(ipv6)) => IpNet::V6(Ipv6Net::new(ipv6, 128)?),
@@ -29,7 +31,7 @@ fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
             } else if let Ok(ipv6) = Ipv6Net::from_str(ip) {
                 IpNet::V6(ipv6)
             } else {
-                return Err(Box::new(e));
+                return Err(e.into());
             }
         }
     };
@@ -37,7 +39,7 @@ fn parse_ip(ip: &str) -> Result<IpNet, Box<dyn std::error::Error>> {
     Ok(parsed_ip)
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     let args = Cli::parse();
     let mut ctx = Ctx::new(std::io::stdout().lock(), std::io::stderr().lock());
 

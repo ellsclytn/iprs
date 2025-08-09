@@ -1,10 +1,10 @@
-use std::{
-    fmt,
-    io::{self, Write},
-    net::Ipv6Addr,
-};
+use std::{fmt, io::Write, net::Ipv6Addr};
 
-use crate::{context::Ctx, interface::Interface};
+use crate::{
+    context::Ctx,
+    error::{Error, Result},
+    interface::Interface,
+};
 use ipnet::Ipv6Net;
 
 pub trait RandomRangeGenerator {
@@ -105,7 +105,7 @@ where
 }
 
 impl Interface for Ipv6Net {
-    fn summarize<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>) -> Result<(), io::Error> {
+    fn summarize<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>) -> Result<()> {
         ctx.writeln(format!("-[ipv6 : {self}] - 0\n"))?;
         ctx.writeln("[IPV6 INFO]".to_string())?;
 
@@ -134,7 +134,7 @@ impl Interface for Ipv6Net {
         Ok(())
     }
 
-    fn split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, mask: u8) -> Result<(), io::Error> {
+    fn split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, mask: u8) -> Result<()> {
         ctx.writeln(format!("-[ipv6 : {self}] - 0\n"))?;
         ctx.writeln("[Split network]".to_string())?;
 
@@ -156,11 +156,7 @@ impl Interface for Ipv6Net {
         Ok(())
     }
 
-    fn random_split<W: Write, E: Write>(
-        &self,
-        ctx: &mut Ctx<W, E>,
-        split: u8,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn random_split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, split: u8) -> Result<()> {
         let mut rng = DefaultRng;
         random_split_with_rng(self, ctx, split, &mut rng)
     }
@@ -171,7 +167,7 @@ fn random_split_with_rng<W: Write, E: Write, R: RandomRangeGenerator>(
     ctx: &mut Ctx<W, E>,
     split: u8,
     rng: &mut R,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     let address = random_split_generate_address(ip, split, rng)?;
     address.summarize(ctx)?;
 
@@ -182,11 +178,11 @@ fn random_split_generate_address<R: RandomRangeGenerator>(
     ip: &Ipv6Net,
     split: u8,
     rng: &mut R,
-) -> Result<Ipv6Net, Box<dyn std::error::Error>> {
+) -> Result<Ipv6Net> {
     if split <= ip.prefix_len() {
-        return Err("Split mask must be greater than the prefix length".into());
+        return Err(Error::SplitSmallerThanPrefixLen(split, ip.prefix_len()));
     } else if split > 128 {
-        return Err("Split mask cannot be greater than 128".into());
+        return Err(Error::SplitTooBig(128, split));
     }
 
     let random_number = rng.random_range(0..u128::MAX);
