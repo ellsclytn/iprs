@@ -124,13 +124,11 @@ impl Interface for Ipv4Net {
                         subnet.broadcast()
                     ))?;
                 }
-            }
-            Err(_) => {
-                ctx.writeln("-[ERR : Oversized splitmask]".to_string())?;
-            }
-        }
 
-        Ok(())
+                Ok(())
+            }
+            Err(_) => Err(Error::SplitSmallerThanPrefixLen(mask, self.prefix_len())),
+        }
     }
 
     fn random_split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, split: u8) -> Result<()> {
@@ -184,6 +182,7 @@ mod tests {
 
     use super::*;
     use crate::context::test_util::{create_test_ctx, get_output_as_string};
+
     use pretty_assertions::assert_eq;
 
     fn ip_to_u32(ip: &str) -> u32 {
@@ -287,19 +286,12 @@ Network - 1.2.3.112       - 1.2.3.127
 
     #[test]
     fn reports_oversized_range_split() {
-        let expected = "-[ipv4 : 1.2.3.4/29] - 0
-
-[Split network]
--[ERR : Oversized splitmask]
-";
         let ip = Ipv4Net::from_str("1.2.3.4/29").unwrap();
-
         let mut ctx = create_test_ctx();
 
-        ip.split(&mut ctx, 24).unwrap();
-        let output = get_output_as_string(&ctx);
+        let e = ip.split(&mut ctx, 24).unwrap_err();
 
-        assert_eq!(output, expected);
+        assert!(matches!(e, Error::SplitSmallerThanPrefixLen(24, 29)));
     }
 
     #[test]

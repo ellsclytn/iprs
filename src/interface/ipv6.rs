@@ -147,13 +147,11 @@ impl Interface for Ipv6Net {
                         subnet.broadcast()
                     ))?;
                 }
-            }
-            Err(_) => {
-                ctx.writeln("-[ERR : Oversized splitmask]".to_string())?;
-            }
-        }
 
-        Ok(())
+                Ok(())
+            }
+            Err(_) => Err(Error::SplitSmallerThanPrefixLen(mask, self.prefix_len())),
+        }
     }
 
     fn random_split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, split: u8) -> Result<()> {
@@ -281,18 +279,12 @@ Network - ffff::7000:0:0                          - ffff::7fff:ffff:ffff
 
     #[test]
     fn reports_oversized_range_split() {
-        let expected = "-[ipv6 : 1234:5678::/64] - 0
-
-[Split network]
--[ERR : Oversized splitmask]
-";
         let ip = Ipv6Net::from_str("1234:5678::/64").unwrap();
         let mut ctx = create_test_ctx();
 
-        ip.split(&mut ctx, 25).unwrap();
-        let output = get_output_as_string(&ctx);
+        let e = ip.split(&mut ctx, 25).unwrap_err();
 
-        assert_eq!(output, expected);
+        assert!(matches!(e, Error::SplitSmallerThanPrefixLen(25, 64)));
     }
 
     #[test]

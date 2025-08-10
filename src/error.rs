@@ -4,11 +4,11 @@ use thiserror::Error as ThisError;
 pub enum Error {
     #[error("IO error: `{0}`")]
     Io(#[from] std::io::Error),
-    #[error("Address parse error: `{0}`")]
-    AddrParse(#[from] std::net::AddrParseError),
+    #[error("Failed to parse `{0}` as interface")]
+    AddrParse(String),
     #[error("Prefix length error: `{0}`")]
     PrefixLen(#[from] ipnet::PrefixLenError),
-    #[error("Split mask ({0}) must be greater than the prefix length ({1})")]
+    #[error("Split mask ({0}) must be greater than the input prefix length ({1})")]
     SplitSmallerThanPrefixLen(u8, u8),
     #[error("Split mask cannot be greater than {0}. Supplied: {1}")]
     SplitTooBig(u8, u8),

@@ -6,11 +6,16 @@ use std::{
 pub struct Ctx<W: Write, E: Write> {
     output: W,
     err_output: E,
+    pub errored: bool,
 }
 
 impl<W: Write, E: Write> Ctx<W, E> {
     pub fn new(output: W, err_output: E) -> Self {
-        Ctx { output, err_output }
+        Ctx {
+            output,
+            err_output,
+            errored: false,
+        }
     }
 
     pub fn writeln<D: Display>(&mut self, msg: D) -> Result<()> {
@@ -21,9 +26,25 @@ impl<W: Write, E: Write> Ctx<W, E> {
         writeln!(self.err_output, "{msg}")
     }
 
+    pub fn error_and_exit<D: Display>(&mut self, msg: D) -> ! {
+        self.ewriteln(msg).unwrap();
+        std::process::exit(1);
+    }
+
+    pub fn error_without_exit<D: Display>(&mut self, msg: D) -> Result<()> {
+        self.ewriteln(msg)?;
+        self.errored = true;
+
+        Ok(())
+    }
+
     #[cfg(test)]
     pub fn output(&self) -> &W {
         &self.output
+    }
+
+    pub fn err_output(&self) -> &E {
+        &self.err_output
     }
 }
 
@@ -37,5 +58,9 @@ pub mod test_util {
 
     pub fn get_output_as_string(ctx: &Ctx<Vec<u8>, Vec<u8>>) -> String {
         String::from_utf8(ctx.output().clone()).unwrap()
+    }
+
+    pub fn get_err_output_as_string(ctx: &Ctx<Vec<u8>, Vec<u8>>) -> String {
+        String::from_utf8(ctx.err_output().clone()).unwrap()
     }
 }
