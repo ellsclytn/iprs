@@ -142,7 +142,7 @@ checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
 
 [[package]]
 name = "iprs"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "ipnet",

@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.4.0 - 2025-08-10
+#### Bug Fixes
+- improve error handling & messages - (617acfa) - Ellis Clayton
+#### Features
+- add random split selection - (dda0d26) - Ellis Clayton
+#### Refactoring
+- pass through errors more explicitly - (777084a) - Ellis Clayton
+
+- - -
+
 ## 0.3.0 - 2025-08-03
 #### Continuous Integration
 - ensure Cargo changes get included with releases - (652e0f7) - Ellis Clayton
