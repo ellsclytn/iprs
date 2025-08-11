@@ -1,6 +1,7 @@
 mod context;
 mod error;
 mod interface;
+mod rng;
 
 use clap::{arg, Parser};
 use context::Ctx;

@@ -1,42 +1,10 @@
-use std::io::Write;
-use std::{fmt, net::Ipv4Addr};
+use std::{io::Write, net::Ipv4Addr};
 
 use crate::context::Ctx;
-use crate::error::{Error, Result};
-use crate::interface::Interface;
+use crate::error::Result;
+use crate::interface::{traits::*, Interface};
+use crate::rng::DefaultRng;
 use ipnet::Ipv4Net;
-
-pub trait RandomRangeGenerator {
-    fn random_range(&mut self, range: std::ops::Range<u32>) -> u32;
-}
-
-pub struct DefaultRng;
-
-impl RandomRangeGenerator for DefaultRng {
-    fn random_range(&mut self, range: std::ops::Range<u32>) -> u32 {
-        rand::random_range(range)
-    }
-}
-
-trait ToPrimitive {
-    fn to_u32(&self) -> u32;
-}
-
-impl ToPrimitive for Ipv4Addr {
-    fn to_u32(&self) -> u32 {
-        (*self).into()
-    }
-}
-
-trait ToIpv4 {
-    fn to_ipv4(&self) -> Ipv4Addr;
-}
-
-impl ToIpv4 for u32 {
-    fn to_ipv4(&self) -> Ipv4Addr {
-        (*self).into()
-    }
-}
 
 trait Ranges {
     fn addresses_in_network(&self) -> u32;
@@ -59,121 +27,105 @@ impl Ranges for Ipv4Net {
             return None;
         }
 
-        let first = self.network().to_u32().saturating_add(1);
-        let last = self.broadcast().to_u32().saturating_sub(1);
+        let first = u32::from(self.network()).saturating_add(1);
+        let last = u32::from(self.broadcast()).saturating_sub(1);
 
-        Some(format!("{} - {}", first.to_ipv4(), last.to_ipv4()))
+        Some(format!(
+            "{} - {}",
+            Ipv4Addr::from(first),
+            Ipv4Addr::from(last)
+        ))
     }
 }
 
-fn format_attribute<T>(name: &str, value: T) -> String
-where
-    T: fmt::Display,
-{
-    format!("{name: <24}- {value}")
+impl NetworkCore for Ipv4Net {
+    type Address = Ipv4Addr;
+    type Primitive = u32;
+
+    fn addr(&self) -> Self::Address {
+        self.addr()
+    }
+
+    fn prefix_len(&self) -> u8 {
+        self.prefix_len()
+    }
+
+    fn broadcast(&self) -> Self::Address {
+        self.broadcast()
+    }
+
+    fn subnets(&self, prefix_len: u8) -> Result<impl Iterator<Item = Self>> {
+        Ok(self.subnets(prefix_len)?)
+    }
 }
 
-impl Interface for Ipv4Net {
-    fn summarize<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>) -> Result<()> {
+impl NetworkDisplay for Ipv4Net {
+    const IP_VERSION: &'static str = "ipv4";
+    const FORMAT_WIDTH: usize = 15;
+
+    fn from_addr_prefix(addr: Self::Address, prefix: u8) -> Result<Self> {
+        Ok(Ipv4Net::new(addr, prefix)?)
+    }
+}
+
+impl<W: Write, E: Write> NetworkSummarize<W, E> for Ipv4Net {
+    fn summarize(&self, ctx: &mut Ctx<W, E>) -> Result<()> {
         ctx.writeln(format!("-[ipv4 : {self}] - 0\n\n[CIDR]"))?;
 
-        ctx.writeln(format_attribute("Host address", self.addr()))?;
-        ctx.writeln(format_attribute(
+        ctx.writeln(Self::format_attribute("Host address", self.addr()))?;
+        ctx.writeln(Self::format_attribute(
             "Host address (decimal)",
-            self.addr().to_u32(),
+            u32::from(self.addr()),
         ))?;
-        ctx.writeln(format_attribute(
+        ctx.writeln(Self::format_attribute(
             "Host address (hex)",
-            format!("{:X}", self.addr().to_u32()),
+            format!("{:X}", u32::from(self.addr())),
         ))?;
-        ctx.writeln(format_attribute("Network address", self.network()))?;
-        ctx.writeln(format_attribute("Network mask", self.netmask()))?;
-        ctx.writeln(format_attribute("Network mask (bits)", self.prefix_len()))?;
-        ctx.writeln(format_attribute(
+        ctx.writeln(Self::format_attribute("Network address", self.network()))?;
+        ctx.writeln(Self::format_attribute("Network mask", self.netmask()))?;
+        ctx.writeln(Self::format_attribute(
+            "Network mask (bits)",
+            self.prefix_len(),
+        ))?;
+        ctx.writeln(Self::format_attribute(
             "Network mask (hex)",
-            format!("{:X}", self.netmask().to_u32()),
+            format!("{:X}", u32::from(self.netmask())),
         ))?;
-        ctx.writeln(format_attribute("Broadcast address", self.broadcast()))?;
-        ctx.writeln(format_attribute(
-            "Cisco wildcard",
-            (!self.netmask().to_u32()).to_ipv4(),
+        ctx.writeln(Self::format_attribute(
+            "Broadcast address",
+            self.broadcast(),
         ))?;
-        ctx.writeln(format_attribute(
+        ctx.writeln(Self::format_attribute("Cisco wildcard", !self.netmask()))?;
+        ctx.writeln(Self::format_attribute(
             "Addresses in network",
             self.addresses_in_network(),
         ))?;
-        ctx.writeln(format_attribute("Network range", self.network_range()))?;
+        ctx.writeln(Self::format_attribute(
+            "Network range",
+            self.network_range(),
+        ))?;
 
         if let Some(usable_range) = self.usable_range() {
-            ctx.writeln(format_attribute("Usable range", usable_range))?;
+            ctx.writeln(Self::format_attribute("Usable range", usable_range))?;
         }
 
         Ok(())
     }
+}
+
+impl Interface for Ipv4Net {
+    fn summarize<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>) -> Result<()> {
+        NetworkSummarize::summarize(self, ctx)
+    }
 
     fn split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, mask: u8) -> Result<()> {
-        ctx.writeln(format!("-[ipv4 : {self}] - 0\n"))?;
-        ctx.writeln("[Split network]".to_string())?;
-
-        match self.subnets(mask) {
-            Ok(subnets) => {
-                for subnet in subnets {
-                    ctx.writeln(format!(
-                        "Network - {:<15} - {}",
-                        subnet.addr(),
-                        subnet.broadcast()
-                    ))?;
-                }
-
-                Ok(())
-            }
-            Err(_) => Err(Error::SplitSmallerThanPrefixLen(mask, self.prefix_len())),
-        }
+        NetworkDisplay::split(self, ctx, mask)
     }
 
     fn random_split<W: Write, E: Write>(&self, ctx: &mut Ctx<W, E>, split: u8) -> Result<()> {
         let mut rng = DefaultRng;
-        random_split_with_rng(self, ctx, split, &mut rng)
+        NetworkDisplay::summarize_random_split(self, ctx, split, &mut rng)
     }
-}
-
-fn random_split_with_rng<W: Write, E: Write, R: RandomRangeGenerator>(
-    ip: &Ipv4Net,
-    ctx: &mut Ctx<W, E>,
-    split: u8,
-    rng: &mut R,
-) -> Result<()> {
-    let address = random_split_generate_address(ip, split, rng)?;
-    address.summarize(ctx)?;
-
-    Ok(())
-}
-
-fn random_split_generate_address<R: RandomRangeGenerator>(
-    ip: &Ipv4Net,
-    split: u8,
-    rng: &mut R,
-) -> Result<Ipv4Net> {
-    if split <= ip.prefix_len() {
-        return Err(Error::SplitSmallerThanPrefixLen(split, ip.prefix_len()));
-    } else if split > 32 {
-        return Err(Error::SplitTooBig(32, split));
-    }
-
-    let random_number = rng.random_range(0..u32::MAX);
-    let split_mask = !((1 << (32 - split)) - 1);
-
-    if ip.prefix_len() == 0 {
-        let random_address = random_number & split_mask;
-        return Ok(Ipv4Net::new(random_address.to_ipv4(), split)?);
-    }
-
-    let supernet_mask = (1 << (32 - ip.prefix_len())) - 1;
-    let new_address: u32 = (ip.addr().to_u32() & !supernet_mask) | (random_number & supernet_mask);
-    let new_prefix = new_address & split_mask;
-    let address = Ipv4Net::new(new_prefix.to_ipv4(), split)?;
-
-    Ok(address)
 }
 
 #[cfg(test)]
@@ -182,13 +134,15 @@ mod tests {
 
     use super::*;
     use crate::context::test_util::{create_test_ctx, get_output_as_string};
+    use crate::rng::RandomRangeGenerator;
+    use crate::Error;
 
     use pretty_assertions::assert_eq;
 
     fn ip_to_u32(ip: &str) -> u32 {
         let cidr = format!("{ip}/32");
 
-        Ipv4Net::from_str(&cidr).unwrap().addr().to_u32()
+        u32::from(Ipv4Net::from_str(&cidr).unwrap().addr())
     }
 
     struct MockRng {
@@ -201,7 +155,7 @@ mod tests {
         }
     }
 
-    impl RandomRangeGenerator for MockRng {
+    impl RandomRangeGenerator<u32> for MockRng {
         fn random_range(&mut self, _range: std::ops::Range<u32>) -> u32 {
             self.value
         }
@@ -227,7 +181,7 @@ Network range           - 10.1.1.1 - 10.1.1.1
         let ip = Ipv4Net::from_str("10.1.1.1/32").unwrap();
         let mut ctx = create_test_ctx();
 
-        ip.summarize(&mut ctx).unwrap();
+        Interface::summarize(&ip, &mut ctx).unwrap();
         let output = get_output_as_string(&ctx);
 
         assert_eq!(output, expected)
@@ -255,7 +209,7 @@ Usable range            - 10.1.1.1 - 10.1.1.2
         let ip = Ipv4Net::from_str("10.1.1.1/30").unwrap();
         let mut ctx = create_test_ctx();
 
-        ip.summarize(&mut ctx).unwrap();
+        Interface::summarize(&ip, &mut ctx).unwrap();
         let output = get_output_as_string(&ctx);
 
         assert_eq!(output, expected)
@@ -278,7 +232,7 @@ Network - 1.2.3.112       - 1.2.3.127
         let ip = Ipv4Net::from_str("1.2.3.4/25").unwrap();
         let mut ctx = create_test_ctx();
 
-        ip.split(&mut ctx, 28).unwrap();
+        Interface::split(&ip, &mut ctx, 28).unwrap();
         let output = get_output_as_string(&ctx);
 
         assert_eq!(output, expected);
@@ -289,7 +243,7 @@ Network - 1.2.3.112       - 1.2.3.127
         let ip = Ipv4Net::from_str("1.2.3.4/29").unwrap();
         let mut ctx = create_test_ctx();
 
-        let e = ip.split(&mut ctx, 24).unwrap_err();
+        let e = Interface::split(&ip, &mut ctx, 24).unwrap_err();
 
         assert!(matches!(e, Error::SplitSmallerThanPrefixLen(24, 29)));
     }
@@ -299,12 +253,12 @@ Network - 1.2.3.112       - 1.2.3.127
         let ip = Ipv4Net::from_str("182.37.233.188/16").unwrap();
 
         let mut mock_rng1 = MockRng::new(ip_to_u32("34.86.183.34"));
-        let output1 = random_split_generate_address(&ip, 24, &mut mock_rng1).unwrap();
+        let output1 = ip.generate_random_split(24, &mut mock_rng1).unwrap();
 
         assert_eq!(output1.to_string(), "182.37.183.0/24");
 
         let mut mock_rng2 = MockRng::new(ip_to_u32("33.25.245.44"));
-        let output2 = random_split_generate_address(&ip, 18, &mut mock_rng2).unwrap();
+        let output2 = ip.generate_random_split(18, &mut mock_rng2).unwrap();
 
         assert_eq!(output2.to_string(), "182.37.192.0/18");
 
@@ -316,7 +270,7 @@ Network - 1.2.3.112       - 1.2.3.127
         let ip = Ipv4Net::from_str("0.0.0.0/0").unwrap();
 
         let mut mock_rng = MockRng::new(ip_to_u32("230.141.13.62"));
-        let output = random_split_generate_address(&ip, 24, &mut mock_rng).unwrap();
+        let output = ip.generate_random_split(24, &mut mock_rng).unwrap();
 
         assert_eq!(output.to_string(), "230.141.13.0/24");
     }

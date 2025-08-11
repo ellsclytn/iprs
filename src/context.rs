@@ -42,10 +42,6 @@ impl<W: Write, E: Write> Ctx<W, E> {
     pub fn output(&self) -> &W {
         &self.output
     }
-
-    pub fn err_output(&self) -> &E {
-        &self.err_output
-    }
 }
 
 #[cfg(test)]
@@ -58,9 +54,5 @@ pub mod test_util {
 
     pub fn get_output_as_string(ctx: &Ctx<Vec<u8>, Vec<u8>>) -> String {
         String::from_utf8(ctx.output().clone()).unwrap()
-    }
-
-    pub fn get_err_output_as_string(ctx: &Ctx<Vec<u8>, Vec<u8>>) -> String {
-        String::from_utf8(ctx.err_output().clone()).unwrap()
     }
 }
