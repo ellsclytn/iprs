@@ -17,12 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
+      new-tag-created: ${{ steps.check-tag.outputs.new-tag-created }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - run: "cargo install cargo-edit"
+      - name: Get current HEAD SHA
+        id: before-release
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
       - name: Semver release
         uses: cocogitto/cocogitto-action@v3
         id: release
@@ -32,12 +36,24 @@ jobs:
           git-user-email: "iprs@ellis.codes"
           check-latest-tag-only: true
 
+      - name: Check if new commit was created
+        id: check-tag
+        run: |
+          current_sha=$(git rev-parse HEAD)
+          if [ "${{ steps.before-release.outputs.sha }}" != "$current_sha" ]; then
+            echo "new-tag-created=true" >> $GITHUB_OUTPUT
+            echo "New commit and tag created: ${{ steps.release.outputs.version }}"
+          else
+            echo "new-tag-created=false" >> $GITHUB_OUTPUT
+            echo "No new commit created, skipping release"
+          fi
+
       - name: Print version
         run: "echo '${{ steps.release.outputs.version }}'"
 
   create-release:
     needs: tag-version
-    if: needs.tag-version.outputs.version != ''
+    if: needs.tag-version.outputs.new-tag-created == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +69,7 @@ jobs:
 
   upload-assets:
     needs: [tag-version, create-release]
-    if: needs.tag-version.outputs.version != ''
+    if: needs.tag-version.outputs.new-tag-created == 'true'
     strategy:
       matrix:
         include:
